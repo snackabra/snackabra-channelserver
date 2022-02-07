@@ -40,7 +40,7 @@ async function handleErrors(request, func) {
 function returnResult(request, contents, s) {
   const corsHeaders = {
     "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, authorization",
     "Access-Control-Allow-Credentials": "true",
     'Content-Type': 'application/json;',
     "Access-Control-Allow-Origin": request.headers.get("Origin"),
@@ -191,6 +191,7 @@ export class ChatRoomAPI {
     const storage = this.storage;
     this.lastTimestamp = await storage.get('lastTimestamp') || 0;
     this.room_id = room_id;
+    this.personalRoom = await storage.get('personalRoom') || false;
     // this.room_owner = await storage.get('room_owner');
     // this.encryptionKey = await storage.get('encryptionKey');
     /*if (typeof this.room_owner === 'undefined' || typeof this.encryptionKey === 'undefined') {
@@ -203,7 +204,7 @@ export class ChatRoomAPI {
     this.signKey = await this.getKey('signKey');
     this.encryptionKey = await this.getKey('encryptionKey');
     let ledgerKeyString = await this.getKey('ledgerKey');
-    if (ledgerKeyString !== null && ledgerKeyString !== "") {
+    if (ledgerKeyString != null && ledgerKeyString !== "") {
       this.ledgerKey = await crypto.subtle.importKey("jwk", JSON.parse(ledgerKeyString), { name: "RSA-OAEP", hash: 'SHA-256' }, true, ["encrypt"]) || null;
     }
     this.room_capacity = await storage.get('room_capacity') || 20;
@@ -217,7 +218,6 @@ export class ChatRoomAPI {
     this.deviceIds = JSON.parse(await (storage.get('deviceIds')) || JSON.stringify([]));
     this.claimIat = await storage.get('claimIat') || 0;
     this.notificationToken = await storage.get('notificationToken') || "";
-    this.personalRoom = await storage.get('personalRoom') || false;
     /*
     for (let i = 0; i < this.accepted_requests.length; i++) {
       this.lockedKeys[this.accepted_requests[i]] = await storage.get(this.accepted_requests[i]);
@@ -233,12 +233,6 @@ export class ChatRoomAPI {
     await this.initializePromise;
     if (this.verified_guest === '') {
       this.verified_guest = this.getKey('guestKey');
-    }
-    if (this.room_owner === '' || this.room_owner === null || this.room_owner === 'null') {
-      this.room_owner = JSON.stringify(await this.getKey('ownerKey'));
-      this.verified_guest = JSON.stringify(await this.getKey('guestKey'));
-      this.signKey = JSON.stringify(await this.getKey('signKey'));
-      this.encryptionKey = JSON.stringify(await this.getKey('encryptionKey'));
     }
     return await handleErrors(request, async () => {
       let url = new URL(request.url);
@@ -269,32 +263,32 @@ export class ChatRoomAPI {
         }
 
         case "/updateRoomCapacity": {
-          return (await this.verifyCookie(request)) ? await this.handleRoomCapacityChange(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
+          return (await this.verifyCookie(request) || this.verifyAuthSign(request)) ? await this.handleRoomCapacityChange(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
           // return await this.handleRoomCapacityChange(request);
         }
 
         case "/getRoomCapacity": {
-          return (await this.verifyCookie(request)) ? await this.getRoomCapacity(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
+          return (await this.verifyCookie(request) || this.verifyAuthSign(request)) ? await this.getRoomCapacity(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
           // return await this.getRoomCapacity(request);
         }
 
         case "/getPubKeys": {
-          return (await this.verifyCookie(request)) ? await this.getPubKeys(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
+          return (await this.verifyCookie(request) || this.verifyAuthSign(request)) ? await this.getPubKeys(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
           // return await this.getPubKeys(request);
         }
 
         case "/getJoinRequests": {
-          return (await this.verifyCookie(request)) ? await this.getJoinRequests(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
+          return (await this.verifyCookie(request) || this.verifyAuthSign(request)) ? await this.getJoinRequests(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
           // return await this.getJoinRequests(request);
         }
 
         case "/lockRoom": {
-          return (await this.verifyCookie(request)) ? await this.lockRoom(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
+          return (await this.verifyCookie(request) || this.verifyAuthSign(request)) ? await this.lockRoom(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
           // return await this.lockRoom(request);
         }
 
         case "/acceptVisitor": {
-          return (await this.verifyCookie(request)) ? await this.acceptVisitor(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
+          return (await this.verifyCookie(request) || this.verifyAuthSign(request)) ? await this.acceptVisitor(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
           // return await this.acceptVisitor(request);
         }
 
@@ -304,7 +298,7 @@ export class ChatRoomAPI {
         }
 
         case "/ownerUnread": {
-          return (await this.verifyCookie(request)) ? await this.getOwnerUnreadMessages(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
+          return (await this.verifyCookie(request) || this.verifyAuthSign(request)) ? await this.getOwnerUnreadMessages(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
         }
 
         case "/motd": {
@@ -320,7 +314,7 @@ export class ChatRoomAPI {
         }
 
         case "/getAdminData": {
-          return (await this.verifyCookie(request)) ? await this.handleAdminDataRequest(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
+          return (await this.verifyCookie(request) || this.verifyAuthSign(request)) ? await this.handleAdminDataRequest(request) : returnResult(request, JSON.stringify({ error: "Owner verification failed" }, 500));
         }
 
         case "/registerDevice": {
@@ -328,11 +322,19 @@ export class ChatRoomAPI {
         }
 
         case "/downloadData": {
-          return await this.downloadAllData(request)
+          return await this.downloadAllData(request);
         }
 
         case "/uploadRoom": {
-          return await this.uploadData(request)
+          return await this.uploadData(request);
+        }
+
+        case "/authorizeRoom": {
+          return await this.authorizeRoom(request);
+        }
+
+        case "/postPubKey": {
+          return await this.postPubKey(request);
         }
 
         default:
@@ -383,7 +385,7 @@ export class ChatRoomAPI {
           // into their session object and in the visitor list.
           // webSocket.send(JSON.stringify({error: JSON.stringify(msg)}));
           const data = JSON.parse(msg.data);
-          if (this.room_owner === null) {
+          if (this.room_owner === null || this.room_owner === "") {
             webSocket.close(4000, "This room does not have an owner, or the owner has not enabled it. You cannot leave messages here.");
           }
           let keys = { ownerKey: this.room_owner, guestKey: this.verified_guest, encryptionKey: this.encryptionKey, signKey: this.signKey };
@@ -536,12 +538,31 @@ export class ChatRoomAPI {
     }
     if (type === 'ownerKey') {
       let _keys_id = (await this.env.KEYS_NAMESPACE.list({ prefix: this.room_id + '_ownerKey' })).keys.map(key => key.name);
+      if (_keys_id.length == 0) {
+        return null;
+      }
       let keys = _keys_id.map(async key => await this.env.KEYS_NAMESPACE.get(key));
       return await keys[keys.length - 1];
     } else if (type === 'ledgerKey') {
       return await this.env.KEYS_NAMESPACE.get(type);
     }
     return await this.env.KEYS_NAMESPACE.get(this.room_id + '_' + type);
+  }
+
+  async postPubKey(request) {
+    try {
+      const { searchParams } = new URL(request.url);
+      const json = await request.json();
+      const keyType = searchParams.get('type');
+      if (keyType != null) {
+        this.storage.put(keyType, JSON.stringify(json));
+        this.initialize();
+      }
+      return returnResult(request, JSON.stringify({ success: true }), 200);
+    } catch (error) {
+      console.log("Error posting pubKey", error);
+      return returnResult(request, JSON.stringify({ success: false, error: error }), 200)
+    }
   }
 
   async handleRoomCapacityChange(request) {
@@ -714,10 +735,7 @@ export class ChatRoomAPI {
       const encrypted_token_id = this.arrayBufferToBase64(await crypto.subtle.encrypt({ name: "RSA-OAEP" }, this.ledgerKey, token_buffer));
       const hashed_room_id = this.arrayBufferToBase64(await crypto.subtle.digest('SHA-256', (new TextEncoder).encode(this.room_id)));
       const token = { token_hash: token_hash, hashed_room_id: hashed_room_id, encrypted_token_id: encrypted_token_id };
-      if (true) {
-        return returnResult(request, JSON.stringify(token), 200);
-      }
-      return returnResult(request, JSON.stringify({ error: JSON.stringify(_response_json) }), 200)
+      return returnResult(request, JSON.stringify(token), 200);
     } catch (error) {
       return returnResult(request, JSON.stringify({ error: error.message }), 500)
     }
@@ -750,6 +768,38 @@ export class ChatRoomAPI {
       const sign = auth_parts[1];
       return (await this.verifySign(verificationKey, sign, payload + '_' + this.room_id) && ((new Date()).getTime() - parseInt(payload)) < 86400000);
     } catch (error) {
+      return false;
+    }
+  }
+
+  async verifyAuthSign(request) {
+    try {
+      if (!request.headers.has('authorization')) {
+        return false;
+      }
+      let auth_parts = request.headers['authorization'].split('.');
+      if (new Date().getTime() - parseInt(auth_parts[0]) > 60000) {
+        return false;
+      }
+      let sign = auth_parts[1];
+      let ownerKey = await window.crypto.subtle.importKey("jwk", this.room_owner, { name: "ECDH", namedCurve: "P-384" }, false, ["deriveKey"]);
+      let roomSignKey = await window.crypto.subtle.importKey("jwk", this.signKey, { name: "ECDH", namedCurve: "P-384" }, false, ["deriveKey"]);
+      let verificationKey = await window.crypto.subtle.deriveKey(
+        {
+          name: "ECDH",
+          public: ownerKey
+        },
+        roomSignKey,
+        {
+          name: "HMAC",
+          hash: "SHA-256",
+          length: 256
+        },
+        false,
+        ["verify"]);
+      return await window.crypto.subtle.verify("HMAC", verificationKey, this.base64ToArrayBuffer(sign), new TextEncoder().encode(auth_parts[0]));
+    } catch (error) {
+      console.log("Error verifying sign", error.stack)
       return false;
     }
   }
@@ -1047,7 +1097,7 @@ export class ChatRoomAPI {
     let dataBlob = new TextEncoder().encode(JSON.stringify(data));
     const corsHeaders = {
       "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, authorization",
       "Access-Control-Allow-Origin": request.headers.get("Origin")
     }
     return new Response(dataBlob, { status: 200, headers: corsHeaders });
@@ -1056,13 +1106,13 @@ export class ChatRoomAPI {
 
   async uploadData(request) {
     let _secret = this.env.SERVER_SECRET;
-    if (this.room_owner == null || this.room_owner == "") {
-      let data = await request.arrayBuffer();
-      let jsonString = new TextDecoder().decode(data);
-      let jsonData = JSON.parse(jsonString);
-      if ( !jsonData.hasOwnProperty("SERVER_SECRET") || jsonData["SERVER_SECRET"] !== _secret ) {
-        return returnResult(request, JSON.stringify({success: false, error: "Server secret did not match"}));
-      }
+    let data = await request.arrayBuffer();
+    let jsonString = new TextDecoder().decode(data);
+    let jsonData = JSON.parse(jsonString);
+    let roomInitialized = !(this.room_owner === "" || this.room_owner === null);
+    let requestAuthorized = jsonData.hasOwnProperty("SERVER_SECRET") && jsonData["SERVER_SECRET"] === _secret;
+    let allowed = (roomInitialized && this.room_owner === jsonData["roomOwner"]) || requestAuthorized
+    if (allowed) {
       for (let key in jsonData) {
         await this.storage.put(key, jsonData[key]);
       }
@@ -1071,9 +1121,25 @@ export class ChatRoomAPI {
       this.initialize(this.room_id)
       return returnResult(request, JSON.stringify({ success: true }), 200);
     } else {
-      return returnResult(request, JSON.stringify({ success: false, error: "Room already initialized" }, 200))
+      return returnResult(request, JSON.stringify({ success: false, error: !roomInitialized ? "Server secret did not match" : "Room owner needs to upload the room" }, 200));
     }
   }
 
-}
 
+  async authorizeRoom(request) {
+    let _secret = this.env.SERVER_SECRET;
+    let jsonData = await request.json();
+    let requestAuthorized = jsonData.hasOwnProperty("SERVER_SECRET") && jsonData["SERVER_SECRET"] === _secret;
+    if (requestAuthorized) {
+      for (let key in jsonData) {
+        await this.storage.put("room_owner", jsonData["ownerKey"]);
+      }
+      this.personalRoom = true;
+      this.storage.put("personalRoom", true);
+      this.room_owner = jsonData["room_owner"];
+      return returnResult(request, JSON.stringify({ success: true }), 200);
+    } else {
+      return returnResult(request, JSON.stringify({ success: false, error: "Server secret did not match" }, 200));
+    }
+  }
+}
