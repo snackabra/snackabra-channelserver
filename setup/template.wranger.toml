@@ -1,0 +1,36 @@
+# Copyright (c) 2016-2021 Magnusson Institute, All Rights Reserved.
+
+# setup:
+# copy this file to the top level and rename it 'wrangler.toml'
+# insert the pertinent id:s from Cloudflare dashboard
+
+# Personal Room ('r') Server
+# 'r' will be the name on CF, ergo "r.<your CF comain>.workers.dev"
+name = "r"
+
+type = "javascript"
+workers_dev = true
+compatibility_date = "2022-02-01"
+
+# Replace with your account id
+account_id = '<your Account Id>'
+
+# You need to set up these KV namespaces in the CF dashboard, and
+# copy-paste their id:s here. Note that some namespaces are shared
+# with the Storage server, in case you're running both.
+kv_namespaces = [
+  { binding = "MESSAGES_NAMESPACE", id = "<id>" },
+  { binding = "KEYS_NAMESPACE", id = "<id>" },
+  { binding = "LEDGER_NAMESPACE", id= "<id>" }
+]
+
+[build.upload]
+format = "modules"
+dir = "src"
+main = "./chat.mjs"
+rules = [{type = "Data", globs = ["**/*.html"]}]
+
+[durable_objects]
+bindings = [
+  { name = "rooms", class_name = "ChatRoomAPI" },
+]
