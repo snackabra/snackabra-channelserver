@@ -534,6 +534,9 @@ export class ChatRoomAPI {
 
   async getKey(type) {
     if (this.personalRoom) {
+      if (type === 'ledgerKey') {
+        return this.env.ledgerKey;
+      }
       return await this.storage.get(type);
     }
     if (type === 'ownerKey') {
