@@ -731,13 +731,6 @@ export class ChatRoomAPI {
       }
       this.storageLimit = storageLimit - size;
       this.storage.put('storageLimit', this.storageLimit);
-      /*
-      let stub = this.env.storageTokens.get(_id);
-      const _response_json = await (await stub.fetch("https://dummy-url/"+_id_string+"/setSize", {
-        method: "POST",
-        body: JSON.stringify({ size: size })
-      })).json();
-      */
       const token_buffer = crypto.getRandomValues(new Uint8Array(48)).buffer;
       const token_hash_buffer = await crypto.subtle.digest('SHA-256', token_buffer)
       const token_hash = this.arrayBufferToBase64(token_hash_buffer);
