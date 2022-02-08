@@ -106,6 +106,44 @@ room, or migrate a room over from somewhere else.
 
 It will prompt you to enter the secret.
 
+You also need to generate a RSA-OAEP key and push that;
+you need to generate that and copy-paste.
+
+You need to generate the ledger key yourself ('jwk' format), there's a
+few ways to do that, for example open a browser console and enter the
+following Javascript (https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey#rsa_key_pair_generation):
+
+::
+
+   let keyPair = await window.crypto.subtle.generateKey(
+     {
+       name: "RSA-OAEP",
+       modulusLength: 4096,
+       publicExponent: new Uint8Array([1, 0, 1]),
+       hash: "SHA-256"
+     },
+     true,
+     ["encrypt", "decrypt"]
+   );
+   let my_private_key = await window.crypto.subtle.exportKey("jwk", keyPair.privateKey);
+   let my_public_key = await window.crypto.subtle.exportKey("jwk", keyPair.publicKey);
+   JSON.stringify(my_public_key);
+
+
+And you should get something like:
+
+::
+
+   '{"alg":"RSA-OAEP-256","e":"AQAB","ext":true,"key_ops":["encrypt"],"kty":"RSA","n":"mOmu ....
+
+
+The resulting string (with quotes) is the string you enter as your "LEDGER_KEY":
+
+::
+
+   wrangler secret put LEDGER_KEY<enter>
+
+
 Now you should be able to start your server:
 
 ::
@@ -137,7 +175,7 @@ Following files should be in the git::
     │   └── template.wranger.toml
     ├── snackabra.svg
     └── src
-	└── chat.mjs
+        └── chat.mjs
 
 
 
