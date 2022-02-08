@@ -26,7 +26,7 @@ async function handleErrors(request, func) {
     if (request.headers.get("Upgrade") == "websocket") {
       let pair = new WebSocketPair();
       pair[1].accept();
-      pair[1].send(JSON.stringify({ error: err.stack }));
+      pair[1].send(JSON.stringify({ error: '[handleErrors()] ' + err.message + '\n' +  err.stack  }));
       pair[1].close(1011, "Uncaught exception during session setup");
       return new Response(null, { status: 101, webSocket: pair[0] });
     } else {
@@ -121,7 +121,7 @@ async function handleApiRequest(path, request, env) {
         return returnResult(request, JSON.stringify(lastMessageTimes), 200);
       } catch (error) {
         console.log(error);
-        return returnResult(request, JSON.stringify({ error: error }), 500);
+        return returnResult(request, JSON.stringify({ error: '[getLastMessageTimes] ' + error.message + '\n' + error.stack }), 500);
       }
     }
 
@@ -361,7 +361,7 @@ export class ChatRoomAPI {
       try {
         backlog[key] = JSON.parse(storage.get(key));
       } catch (error) {
-        webSocket.send(JSON.stringify({ error: error.message }));
+        webSocket.send(JSON.stringify({ error: '[handleSession()] ' + error.message + '\n' + error.stack }));
       }
     })
     //session.blockedMessages.push(JSON.stringify({...storage}))
@@ -461,9 +461,9 @@ export class ChatRoomAPI {
         await this.sendNotifications(true);
         // webSocket.send(JSON.stringify({ error: err.stack }));
         await this.env.MESSAGES_NAMESPACE.put(key, msg.data);
-      } catch (err) {
+      } catch (error) {
         // Report any exceptions directly back to the client
-        webSocket.send(JSON.stringify({ error: err.stack }));
+        webSocket.send(JSON.stringify({ error: '[handleSession()] ' + error.message + '\n' + error.stack }));
       }
     });
 
@@ -564,7 +564,7 @@ export class ChatRoomAPI {
       return returnResult(request, JSON.stringify({ success: true }), 200);
     } catch (error) {
       console.log("Error posting pubKey", error);
-      return returnResult(request, JSON.stringify({ success: false, error: error }), 200)
+      return returnResult(request, JSON.stringify({ success: false, error: '[postPubKey()] ' + error.message + '\n' + error.stack }), 200)
     }
   }
 
@@ -699,7 +699,7 @@ export class ChatRoomAPI {
     }
     catch (error) {
       console.log("Check for owner key rotation failed: ", error);
-      return returnResult(request, JSON.stringify({ success: false, error: error }), 200)
+      return returnResult(request, JSON.stringify({ success: false, error: '[ownerKeyRotation()] ' + error.message + '\n' + error.stack }), 200)
     }
   }
 
@@ -741,7 +741,7 @@ export class ChatRoomAPI {
       const token = { token_hash: token_hash, hashed_room_id: hashed_room_id, encrypted_token_id: encrypted_token_id };
       return returnResult(request, JSON.stringify(token), 200);
     } catch (error) {
-      return returnResult(request, JSON.stringify({ error: error.message }), 500)
+      return returnResult(request, JSON.stringify({ error: '[handleNewStorage()] ' + error.message + '\n' + error.stack }), 500)
     }
   }
 
@@ -838,12 +838,12 @@ export class ChatRoomAPI {
         );
         return encodeURIComponent(this.arrayBufferToBase64(sign));
       } catch (error) {
-        console.log(error);
+        // console.log(error);
         return { error: "Failed to sign content" };
       }
     } catch (error) {
-      console.log(error);
-      return { error: error };
+      // console.log(error);
+      return { error: '[sign() ]' + error.message + '\n' + error.stack };
     }
   }
 
@@ -976,19 +976,21 @@ export class ChatRoomAPI {
   }
 
   arrayBufferToBase64(buffer) {
-    try {
-      let binary = '';
-      const bytes = new Uint8Array(buffer);
-      const len = bytes.byteLength;
-      for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      return btoa(binary);
+    // try {  // better to just throw the error
+
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
     }
-    catch (e) {
-      console.log(e);
-      return { error: e };
-    }
+    return btoa(binary);
+
+    // }
+    // catch (e) {
+    //   console.log(e);
+    //   return { error: e };
+    // }
   }
 
   checkJsonExistence(val, arr) {

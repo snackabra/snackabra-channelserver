@@ -137,12 +137,13 @@ And you should get something like:
    '{"alg":"RSA-OAEP-256","e":"AQAB","ext":true,"key_ops":["encrypt"],"kty":"RSA","n":"mOmu ....
 
 
-The resulting string (with quotes) is the string you enter as your "LEDGER_KEY":
+(Don't forget to store the full / private key somewhere secure: ``JSON.stringify(my_private_key)``)
+
+The resulting string (include the quotes) is the string you enter as your "LEDGER_KEY":
 
 ::
 
    wrangler secret put LEDGER_KEY<enter>
-
 
 Now you should be able to start your server:
 
@@ -150,14 +151,13 @@ Now you should be able to start your server:
 
    wrangler publish
 
-And point a client to it.
+And point a client to it!
+
 
 (*) We are not affiliated with Cloudflare, we're just fans.
 
 (**) At time of writing, the link was:
 https://dash.cloudflare.com/6a24dd354a78c1e313b1b8054d75e506/workers/overview?enable-durable-objects
-
-    
 
 
 Directory
