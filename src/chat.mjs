@@ -36,6 +36,26 @@ async function handleErrors(request, func) {
   }
 }
 
+// so many problems with JSON parsing, adding a wrapper to capture more info
+function jsonParseWrapper(str, loc) {
+  try {
+    return JSON.parse(str);
+  } catch (error) {
+    // sometimes it's an embedded string
+    try {
+      return JSON.parse(eval(str));
+    } catch {
+      // let's try one more thing
+      try {
+	return JSON.parse(str.slice(1, -1));
+	} catch {
+	  // we'll throw the original error
+	  throw new Error('JSON.parse() error at ' + loc + ' (tried eval and slice): ' + error.message + '\nString was: ' + str);
+	}
+    }
+  }
+}
+
 
 function returnResult(request, contents, s) {
   const corsHeaders = {
@@ -205,17 +225,17 @@ export class ChatRoomAPI {
     this.encryptionKey = await this.getKey('encryptionKey');
     let ledgerKeyString = await this.getKey('ledgerKey');
     if (ledgerKeyString != null && ledgerKeyString !== "") {
-      this.ledgerKey = await crypto.subtle.importKey("jwk", JSON.parse(ledgerKeyString), { name: "RSA-OAEP", hash: 'SHA-256' }, true, ["encrypt"]) || null;
+      this.ledgerKey = await crypto.subtle.importKey("jwk", jsonParseWrapper(ledgerKeyString, 'L217'), { name: "RSA-OAEP", hash: 'SHA-256' }, true, ["encrypt"]) || null;
     }
     this.room_capacity = await storage.get('room_capacity') || 20;
-    this.visitors = JSON.parse(await storage.get('visitors') || JSON.stringify([]));
+    this.visitors = jsonParseWrapper(await storage.get('visitors') || JSON.stringify([]), 'L220');
     this.ownerUnread = await storage.get('ownerUnread') || 0;
     this.locked = await storage.get('locked') || false;
-    this.join_requests = JSON.parse(await storage.get('join_requests') || JSON.stringify([]));
-    this.accepted_requests = JSON.parse(await storage.get('accepted_requests') || JSON.stringify([]));
+    this.join_requests = jsonParseWrapper(await storage.get('join_requests') || JSON.stringify([]), 'L223');
+    this.accepted_requests = jsonParseWrapper(await storage.get('accepted_requests') || JSON.stringify([]), 'L224');
     this.storageLimit = await storage.get('storageLimit') || 1024 * 1024 * 1024;
     this.lockedKeys = await (storage.get('lockedKeys')) || {};
-    this.deviceIds = JSON.parse(await (storage.get('deviceIds')) || JSON.stringify([]));
+    this.deviceIds = jsonParseWrapper(await (storage.get('deviceIds')) || JSON.stringify([]), 'L227');
     this.claimIat = await storage.get('claimIat') || 0;
     this.notificationToken = await storage.get('notificationToken') || "";
     /*
@@ -359,7 +379,7 @@ export class ChatRoomAPI {
     let backlog = {}
     keys.forEach(key => {
       try {
-        backlog[key] = JSON.parse(storage.get(key));
+        backlog[key] = jsonParseWrapper(storage.get(key), 'L371');
       } catch (error) {
         webSocket.send(JSON.stringify({ error: '[handleSession()] ' + error.message + '\n' + error.stack }));
       }
@@ -384,7 +404,7 @@ export class ChatRoomAPI {
           // The first message the client sends is the user info message with their pubKey. Save it
           // into their session object and in the visitor list.
           // webSocket.send(JSON.stringify({error: JSON.stringify(msg)}));
-          const data = JSON.parse(msg.data);
+          const data = jsonParseWrapper(msg.data, 'L396');
           if (this.room_owner === null || this.room_owner === "") {
             webSocket.close(4000, "This room does not have an owner, or the owner has not enabled it. You cannot leave messages here.");
           }
@@ -400,7 +420,7 @@ export class ChatRoomAPI {
           // const isAccepted = this.accepted_requests.indexOf(data.name) > -1;
           let _name;
           try {
-            _name = JSON.parse(data.name);
+            _name = jsonParseWrapper(data.name, 'L412');
           } catch (err) {
             webSocket.close(1000, 'The first message should contain the pubKey in json stringified format')
             return;
@@ -437,7 +457,7 @@ export class ChatRoomAPI {
           receivedUserInfo = true;
 
           return;
-        } else if (JSON.parse(msg.data).ready) {
+        } else if (jsonParseWrapper(msg.data, 'L449').ready) {
           webSocket.send(session.blockedMessages)
           // session.blockedMessages.forEach(queued => {
           //   webSocket.send(queued);
@@ -454,7 +474,7 @@ export class ChatRoomAPI {
         const key = this.room_id + ts;
 
         let _x = {}
-        _x[key] = JSON.parse(msg.data);
+        _x[key] = jsonParseWrapper(msg.data, 'L466');
         this.broadcast(JSON.stringify(_x))
         await this.storage.put(key, msg.data);
         console.log("NOW CALLING FUNCTION")
@@ -519,7 +539,7 @@ export class ChatRoomAPI {
       let backlog = {}
       keys.forEach(key => {
         try {
-          backlog[key] = JSON.parse(storage.get(key));
+          backlog[key] = jsonParseWrapper(storage.get(key), 'L531');
         } catch (error) {
           console.log(error)
         }
@@ -766,7 +786,7 @@ export class ChatRoomAPI {
       if (!cookies.hasOwnProperty('token_' + this.room_id)) {
         return false;
       }
-      const verificationKey = await crypto.subtle.importKey("jwk", JSON.parse(await this.env.KEYS_NAMESPACE.get(this.room_id + '_authorizationKey')), { name: "ECDSA", namedCurve: "P-384" }, false, ['verify']);
+      const verificationKey = await crypto.subtle.importKey("jwk", jsonParseWrapper(await this.env.KEYS_NAMESPACE.get(this.room_id + '_authorizationKey'), 'L778'), { name: "ECDSA", namedCurve: "P-384" }, false, ['verify']);
       const auth_parts = cookies['token_' + this.room_id].split('.');
       const payload = auth_parts[0];
       const sign = auth_parts[1];
@@ -944,7 +964,7 @@ export class ChatRoomAPI {
           continue;
         }
         const keyType = key.split('_').slice(-1)[0];
-        let val = typeof keys[key] === 'object' ? keys[key] : JSON.parse(keys[key]);
+        let val = typeof keys[key] === 'object' ? keys[key] : jsonParseWrapper(keys[key], 'L956');
         if (keyType === 'encryptionKey') {
           const cryptoKey = await crypto.subtle.importKey("jwk", val, { name: "AES-GCM", length: 256 }, true, ['encrypt', 'decrypt']);
           const exported = await crypto.subtle.exportKey("raw", cryptoKey);
@@ -996,7 +1016,7 @@ export class ChatRoomAPI {
   checkJsonExistence(val, arr) {
     for (let i = 0; i < arr.length; i++) {
       try {
-        if (this.areJsonKeysSame(val, JSON.parse(arr[i])))
+        if (this.areJsonKeysSame(val, jsonParseWrapper(arr[i], 'L1008')))
           return true;
       } catch (err) {
         continue;
@@ -1007,9 +1027,8 @@ export class ChatRoomAPI {
 
   getLockedKey(val) {
     for (let key of Object.keys(this.lockedKeys)) {
-      if (this.areJsonKeysSame(val, JSON.parse(key))) {
+      if (this.areJsonKeysSame(val, jsonParseWrapper(key, 'L1019')))
         return this.lockedKeys[key];
-      }
     }
     return { error: "Could not find key" };
   }
@@ -1114,7 +1133,7 @@ export class ChatRoomAPI {
     let _secret = this.env.SERVER_SECRET;
     let data = await request.arrayBuffer();
     let jsonString = new TextDecoder().decode(data);
-    let jsonData = JSON.parse(jsonString);
+    let jsonData = jsonParseWrapper(jsonString, 'L1126');
     let roomInitialized = !(this.room_owner === "" || this.room_owner === null);
     let requestAuthorized = jsonData.hasOwnProperty("SERVER_SECRET") && jsonData["SERVER_SECRET"] === _secret;
     let allowed = (roomInitialized && this.room_owner === jsonData["roomOwner"]) || requestAuthorized
