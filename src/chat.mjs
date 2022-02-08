@@ -687,6 +687,14 @@ export class ChatRoomAPI {
       const _updatedKey = await this.getKey('ownerKey');
       // this.broadcast(JSON.stringify({ control: true, ownerKeyChanged: true, ownerKey: _updatedKey }));
       this.room_owner = _updatedKey;
+
+      // Now pushing all accepted requests back to join requests
+      this.join_requests = [...this.join_requests, ...this.accepted_requests];
+      this.accepted_requests = [];
+      this.lockedKeys = [];
+      this.storage.put('join_requests', JSON.stringify(this.join_requests))
+      this.storage.put('lockedKeys', JSON.stringify(this.lockedKeys))
+      this.storage.put('accepted_requests', JSON.stringify(this.accepted_requests));
       return returnResult(request, JSON.stringify({ success: true }), 200);
     }
     catch (error) {
