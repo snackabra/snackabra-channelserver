@@ -10,7 +10,6 @@ Snackabra Room Server
 For general documentation on Snackabra see:
 
 * https://snackabra.io
-* https://snackabra.github.org
 
 The room server allows you to host and manage your own Snackabra
 server, called a "personal" server (as opposed to a "public"
@@ -25,7 +24,8 @@ You will need a client to connect to the server. We currently have two
 reference implementations, a web app version and an iOS version:
 
 * https://snackabra.github.com/snackabra-webclient
-* https://snackabra.github.com/snackabra-ios
+
+* https://snackabra.github.com/snackabra-ios (early version)
 
 In the clients you can then point to your server (once it's up and
 running).
