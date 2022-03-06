@@ -163,7 +163,7 @@ https://dash.cloudflare.com/6a24dd354a78c1e313b1b8054d75e506/workers/overview?en
 Directory
 ---------
 
-Following files should be in the git::
+Following files should be in the git:
 
 ::
 
