@@ -1,9 +1,12 @@
 {
   "name": "snackabra-roomserver",
   "author": "Magnusson Institute",
-  "description": "Snackabra storage server",
-  "module": "./src/chat.mjs",
-  "version": "0.4.2",
+  "email" : "snackabra@gmail.com",
+  "description": "Snackabra Room Server",
+  "version": "0.4.3",
+  "module": "./src/room.mjs",
+  "bugs": "https://github.com/snackabra/snackabra-roomserver/issues",
+  "homepage": "https://snackabra.io",
   "license": "GPL-3.0-only",
   "private": false
 }

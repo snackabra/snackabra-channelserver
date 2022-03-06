@@ -169,10 +169,11 @@ async function lastTimeStamp(room_id, env) {
 
 // =======================================================================================
 // The ChatRoom Durable Object Class
-
-// ChatRoom implements a Durable Object that coordinates an individual chat room. Participants
-// connect to the room using WebSockets, and the room broadcasts messages from each participant
-// to all others.
+//
+// ChatRoom implements a Durable Object that coordinates an individual
+// chat room. Participants connect to the room using WebSockets, and
+// the room broadcasts messages from each participant to all others.
+//
 export class ChatRoomAPI {
   constructor(state, env) {
     this.storage = state.storage;
@@ -773,7 +774,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async verifyCookie(request) {
+  async function verifyCookie(request) {
 
     // Parse cookie code from https://stackoverflow.com/questions/51812422/node-js-how-can-i-get-cookie-value-by-cookie-name-from-request
 
@@ -796,7 +797,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async verifyAuthSign(request) {
+  async function verifyAuthSign(request) {
     try {
       if (!request.headers.has('authorization')) {
         return false;
@@ -828,7 +829,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async verifySign(secretKey, sign, contents) {
+  async function verifySign(secretKey, sign, contents) {
     try {
       const _sign = this.base64ToArrayBuffer(decodeURIComponent(sign));
       const encoder = new TextEncoder();
@@ -845,7 +846,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async sign(secretKey, contents) {
+  async function sign(secretKey, contents) {
     try {
       const encoder = new TextEncoder();
       const encoded = encoder.encode(contents);
@@ -867,7 +868,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async jwtSign(payload, secret, options) {
+  async function jwtSign(payload, secret, options) {
     console.log("Trying to create sign: ", payload, typeof payload, secret, typeof secret)
     if (payload === null || typeof payload !== 'object')
       throw new Error('payload must be an object')
@@ -894,19 +895,19 @@ export class ChatRoomAPI {
     return `${partialToken}.${this.jwtStringify(new Uint8Array(signature))}`
   }
 
-  _utf8ToUint8Array(str) {
+  function _utf8ToUint8Array(str) {
     return this.jwtParse(btoa(unescape(encodeURIComponent(str))))
   }
 
-  jwtParse(s) {
+  function jwtParse(s) {
     return new Uint8Array(Array.prototype.map.call(atob(s.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '')), c => c.charCodeAt(0)))
   }
 
-  jwtStringify(a) {
+  function jwtStringify(a) {
     return btoa(String.fromCharCode.apply(0, a)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
   }
 
-  jwt_str2ab(str) {
+  function jwt_str2ab(str) {
     const buf = new ArrayBuffer(str.length);
     const bufView = new Uint8Array(buf);
     for (let i = 0, strLen = str.length; i < strLen; i++) {
@@ -915,7 +916,7 @@ export class ChatRoomAPI {
     return buf;
   }
 
-  addNewlines(str) {
+  function addNewlines(str) {
     var result = '';
     while (str.length > 64) {
       result += str.substring(0, 64) + '\n';
@@ -925,14 +926,14 @@ export class ChatRoomAPI {
     return result;
   }
 
-  ab2str(buf) {
+  function ab2str(buf) {
     return String.fromCharCode.apply(null, new Uint8Array(buf));
   }
 
   /*
   Export the given key and write it into the "exported-key" space.
   */
-  async exportPrivateCryptoKey(key) {
+  async function exportPrivateCryptoKey(key) {
     const exported = await crypto.subtle.exportKey(
       "pkcs8",
       key
@@ -944,7 +945,7 @@ export class ChatRoomAPI {
     return pemExported
   }
 
-  async exportPublicCryptoKey(key) {
+  async function exportPublicCryptoKey(key) {
     const exported = await crypto.subtle.exportKey(
       "spki",
       key
@@ -956,7 +957,7 @@ export class ChatRoomAPI {
     return pemExported;
   }
 
-  async convertToPem(keys) {
+  async function convertToPem(keys) {
     let _keys = {};
     for (let key in keys) {
       try {
