@@ -167,16 +167,15 @@ Following files should be in the git::
 
 ::
 
-    .
-    ├── LICENSE.md
-    ├── README.rst
-    ├── package.json
-    ├── setup
-    │   └── template.wranger.toml
-    ├── snackabra.svg
-    └── src
-        └── chat.mjs
-
+  .
+  ├── LICENSE.md
+  ├── README.rst
+  ├── package.json
+  ├── setup
+  │   └── template.wranger.toml
+  ├── snackabra.svg
+  └── src
+      └── chat.mjs
 
 
 LICENSE
