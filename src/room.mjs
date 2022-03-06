@@ -774,7 +774,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async function verifyCookie(request) {
+  async verifyCookie(request) {
 
     // Parse cookie code from https://stackoverflow.com/questions/51812422/node-js-how-can-i-get-cookie-value-by-cookie-name-from-request
 
@@ -797,7 +797,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async function verifyAuthSign(request) {
+  async verifyAuthSign(request) {
     try {
       if (!request.headers.has('authorization')) {
         return false;
@@ -829,7 +829,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async function verifySign(secretKey, sign, contents) {
+  async verifySign(secretKey, sign, contents) {
     try {
       const _sign = this.base64ToArrayBuffer(decodeURIComponent(sign));
       const encoder = new TextEncoder();
@@ -846,7 +846,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async function sign(secretKey, contents) {
+  async sign(secretKey, contents) {
     try {
       const encoder = new TextEncoder();
       const encoded = encoder.encode(contents);
@@ -868,7 +868,7 @@ export class ChatRoomAPI {
     }
   }
 
-  async function jwtSign(payload, secret, options) {
+  async jwtSign(payload, secret, options) {
     console.log("Trying to create sign: ", payload, typeof payload, secret, typeof secret)
     if (payload === null || typeof payload !== 'object')
       throw new Error('payload must be an object')
@@ -895,19 +895,19 @@ export class ChatRoomAPI {
     return `${partialToken}.${this.jwtStringify(new Uint8Array(signature))}`
   }
 
-  function _utf8ToUint8Array(str) {
+  _utf8ToUint8Array(str) {
     return this.jwtParse(btoa(unescape(encodeURIComponent(str))))
   }
 
-  function jwtParse(s) {
+  jwtParse(s) {
     return new Uint8Array(Array.prototype.map.call(atob(s.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '')), c => c.charCodeAt(0)))
   }
 
-  function jwtStringify(a) {
+  jwtStringify(a) {
     return btoa(String.fromCharCode.apply(0, a)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
   }
 
-  function jwt_str2ab(str) {
+  jwt_str2ab(str) {
     const buf = new ArrayBuffer(str.length);
     const bufView = new Uint8Array(buf);
     for (let i = 0, strLen = str.length; i < strLen; i++) {
@@ -916,7 +916,7 @@ export class ChatRoomAPI {
     return buf;
   }
 
-  function addNewlines(str) {
+  addNewlines(str) {
     var result = '';
     while (str.length > 64) {
       result += str.substring(0, 64) + '\n';
@@ -926,14 +926,14 @@ export class ChatRoomAPI {
     return result;
   }
 
-  function ab2str(buf) {
+  ab2str(buf) {
     return String.fromCharCode.apply(null, new Uint8Array(buf));
   }
 
   /*
   Export the given key and write it into the "exported-key" space.
   */
-  async function exportPrivateCryptoKey(key) {
+  async exportPrivateCryptoKey(key) {
     const exported = await crypto.subtle.exportKey(
       "pkcs8",
       key
@@ -945,7 +945,7 @@ export class ChatRoomAPI {
     return pemExported
   }
 
-  async function exportPublicCryptoKey(key) {
+  async exportPublicCryptoKey(key) {
     const exported = await crypto.subtle.exportKey(
       "spki",
       key
@@ -957,7 +957,7 @@ export class ChatRoomAPI {
     return pemExported;
   }
 
-  async function convertToPem(keys) {
+  async convertToPem(keys) {
     let _keys = {};
     for (let key in keys) {
       try {
