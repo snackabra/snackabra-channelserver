@@ -9,3 +9,5 @@ wrangler.toml
 # ignore output from (gnu) source-highlight
 .js.html
 .tsx.html
+/my_public_key
+/my_private_key
