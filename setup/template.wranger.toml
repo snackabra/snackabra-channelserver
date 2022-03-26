@@ -13,6 +13,7 @@ workers_dev = true
 compatibility_date = "2022-02-01"
 
 # Replace with your account id
+# From your CF dashboard look to the right side, about midway down you will find your account ID
 account_id = '<your Account Id>'
 
 # You need to set up these KV namespaces in the CF dashboard, and
@@ -27,7 +28,7 @@ kv_namespaces = [
 [build.upload]
 format = "modules"
 dir = "src"
-main = "./chat.mjs"
+main = "./room.mjs"
 rules = [{type = "Data", globs = ["**/*.html"]}]
 
 [durable_objects]
