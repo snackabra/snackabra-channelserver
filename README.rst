@@ -63,7 +63,7 @@ when any nameservers have propagated.
 Next set up the CF command line environment, the "Wrangler CLI", we
 use "yarn" in general but the personal server code is pure JS and
 (currently) does not need any node packages. Follow instructions at
-https://developers.cloudflare.com/workers/get-started/guide/ -
+https://developers.cloudflare.com/workers/cli-wrangler/ -
 at time of writing:
 
 ::
