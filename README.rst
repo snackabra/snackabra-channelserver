@@ -63,7 +63,7 @@ when any nameservers have propagated.
 Next set up the CF command line environment, the "Wrangler CLI", we
 use "yarn" in general but the personal server code is pure JS and
 (currently) does not need any node packages. Follow instructions at
-https://dash.cloudflare.com/6a24dd354a78c1e313b1b8054d75e506/workers/cli -
+https://developers.cloudflare.com/workers/cli-wrangler/ -
 at time of writing:
 
 ::
@@ -113,6 +113,8 @@ You need to generate the ledger key yourself ('jwk' format), there's a
 few ways to do that, for example open a browser console and enter the
 following Javascript (https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey#rsa_key_pair_generation):
 
+If you are running Node v15 or higher the mint_keys.js script will mint and store them locally.
+
 ::
 
    let keyPair = await window.crypto.subtle.generateKey(
@@ -156,8 +158,7 @@ And point a client to it!
 
 (*) We are not affiliated with Cloudflare, we're just fans.
 
-(**) At time of writing, the link was:
-https://dash.cloudflare.com/6a24dd354a78c1e313b1b8054d75e506/workers/overview?enable-durable-objects
+Log into the Cloudflare dashboard > Workers > Durable Objects
 
 
 Directory
