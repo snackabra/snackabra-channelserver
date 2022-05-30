@@ -22,7 +22,7 @@ account_id = '<your Account Id>'
 kv_namespaces = [
   { binding = "MESSAGES_NAMESPACE", id = "<id>" },
   { binding = "KEYS_NAMESPACE", id = "<id>" },
-  { binding = "LEDGER_NAMESPACE", id= "<id>" }
+  { binding = "LEDGER_NAMESPACE", id = "<id>" }
 ]
 
 [build.upload]
