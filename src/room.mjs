@@ -1147,6 +1147,7 @@ export class ChatRoomAPI {
       this.initialize(this.room_id)
       return returnResult(request, JSON.stringify({ success: true }), 200);
     } else {
+      console.log(`wrong secret used - correct is '${_secret}`);
       return returnResult(request, JSON.stringify({ success: false, error: !roomInitialized ? "Server secret did not match" : "Room owner needs to upload the room" }, 200));
     }
   }
