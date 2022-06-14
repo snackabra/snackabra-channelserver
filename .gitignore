@@ -10,3 +10,5 @@ wrangler.toml
 .js.html
 .tsx.html
 .DS_Store
+/my_public_key
+/my_private_key
