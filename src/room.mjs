@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2019-2021 Magnusson Institute, All Rights Reserved
 
    "Snackabra" is a registered trademark
@@ -26,7 +26,7 @@ async function handleErrors(request, func) {
     if (request.headers.get("Upgrade") == "websocket") {
       let pair = new WebSocketPair();
       pair[1].accept();
-      pair[1].send(JSON.stringify({ error: '[handleErrors()] ' + err.message + '\n' +  err.stack  }));
+      pair[1].send(JSON.stringify({ error: '[handleErrors()] ' + err.message + '\n' + err.stack }));
       pair[1].close(1011, "Uncaught exception during session setup");
       return new Response(null, { status: 101, webSocket: pair[0] });
     } else {
@@ -47,11 +47,11 @@ function jsonParseWrapper(str, loc) {
     } catch {
       // let's try one more thing
       try {
-	return JSON.parse(str.slice(1, -1));
-	} catch {
-	  // we'll throw the original error
-	  throw new Error('JSON.parse() error at ' + loc + ' (tried eval and slice): ' + error.message + '\nString was: ' + str);
-	}
+        return JSON.parse(str.slice(1, -1));
+      } catch {
+        // we'll throw the original error
+        throw new Error('JSON.parse() error at ' + loc + ' (tried eval and slice): ' + error.message + '\nString was: ' + str);
+      }
     }
   }
 }
@@ -66,6 +66,17 @@ function returnResult(request, contents, s) {
     "Access-Control-Allow-Origin": request.headers.get("Origin"),
   }
   return new Response(contents, { status: s, headers: corsHeaders });
+}
+
+function exit(request) {
+  const corsHeaders = {
+    "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+    "Access-Control-Allow-Headers": "Content-Type, authorization",
+    "Access-Control-Allow-Credentials": "true",
+    'Content-Type': 'application/json;',
+    "Access-Control-Allow-Origin": request.headers.get("Origin"),
+  }
+  return new Response(JSON.stringify({ message: 'script exited' }), { status: 200, headers: corsHeaders });
 }
 
 export default {
@@ -99,12 +110,14 @@ async function handleApiRequest(path, request, env) {
       // OK, the request is for `/api/room/<name>/...`. It's time to route to the Durable Object
       // for the specific room.
       let name = path[1];
-
-      if (await fetch("https://m063.dpn.workers.dev/api/v1/pubKeys?roomId=" + name).error) {
+      /*
+      const pubKey = await fetch("https://m063.dpn.workers.dev/api/v1/pubKeys?roomId=" + name)
+      if (pubKey?.error) {
         return returnResult(request, JSON.stringify({ error: "Not found" }), 404);
       }
-      let id = env.rooms.idFromName(name);
 
+       */
+      let id = env.rooms.idFromName(name);
       let roomObject = env.rooms.get(id);
       let newUrl = new URL(request.url);
       newUrl.pathname = "/" + path.slice(1).join("/");
@@ -153,9 +166,15 @@ async function handleApiRequest(path, request, env) {
 
 async function lastTimeStamp(room_id, env) {
   try {
+
     let list_response = await env.MESSAGES_NAMESPACE.list({ "prefix": room_id });
-    // console.log('Here')
-    let message_keys = list_response.keys.map((res) => { return res.name });
+
+    let message_keys = list_response.keys.map((res) => {
+      return res.name
+    });
+    if(message_keys.length === 0){
+      return '0'
+    }
     while (!list_response.list_complete) {
       list_response = await env.MESSAGES_NAMESPACE.list({ "cursor": list_response.cursor })
       message_keys = [...message_keys, list_response.keys];
@@ -177,7 +196,6 @@ async function lastTimeStamp(room_id, env) {
 export class ChatRoomAPI {
   constructor(state, env) {
     this.storage = state.storage;
-
     this.env = env;
 
     this.sessions = [];
@@ -209,6 +227,9 @@ export class ChatRoomAPI {
   // need the initialize method to restore state of room when the worker is updated
 
   async initialize(room_id) {
+    /*
+          return exit(request);
+     */
     const storage = this.storage;
     this.lastTimestamp = await storage.get('lastTimestamp') || 0;
     this.room_id = room_id;
@@ -226,7 +247,11 @@ export class ChatRoomAPI {
     this.encryptionKey = await this.getKey('encryptionKey');
     let ledgerKeyString = await this.getKey('ledgerKey');
     if (ledgerKeyString != null && ledgerKeyString !== "") {
-      this.ledgerKey = await crypto.subtle.importKey("jwk", jsonParseWrapper(ledgerKeyString, 'L217'), { name: "RSA-OAEP", hash: 'SHA-256' }, true, ["encrypt"]) || null;
+      this.ledgerKey = await crypto.subtle.importKey(
+        "jwk",
+        jsonParseWrapper(ledgerKeyString, 'L217'),
+        { name: "RSA-OAEP", hash: 'SHA-256' },
+        true, ["encrypt"]) || null;
     }
     this.room_capacity = await storage.get('room_capacity') || 20;
     this.visitors = jsonParseWrapper(await storage.get('visitors') || JSON.stringify([]), 'L220');
@@ -366,7 +391,7 @@ export class ChatRoomAPI {
   }
 
   async handleSession(webSocket, ip) {
-    // await this.initialize();
+    //await this.initialize();
     webSocket.accept();
     // Create our session and add it to the sessions list.
     // We don't send any messages to the client until it has sent us the initial user info
@@ -409,9 +434,19 @@ export class ChatRoomAPI {
           if (this.room_owner === null || this.room_owner === "") {
             webSocket.close(4000, "This room does not have an owner, or the owner has not enabled it. You cannot leave messages here.");
           }
-          let keys = { ownerKey: this.room_owner, guestKey: this.verified_guest, encryptionKey: this.encryptionKey, signKey: this.signKey };
+          let keys = {
+            ownerKey: this.room_owner,
+            guestKey: this.verified_guest,
+            encryptionKey: this.encryptionKey,
+            signKey: this.signKey
+          };
           if (data.pem) {
-            keys = await this.convertToPem({ ownerKey: this.room_owner, guestKey: this.verified_guest, encryptionKey: this.encryptionKey, signKey: this.signKey });
+            keys = await this.convertToPem({
+              ownerKey: this.room_owner,
+              guestKey: this.verified_guest,
+              encryptionKey: this.encryptionKey,
+              signKey: this.signKey
+            });
           }
           if (!data.name) {
             webSocket.close(1000, 'The first message should contain the pubKey')
@@ -440,8 +475,7 @@ export class ChatRoomAPI {
             if (!isAccepted && !isPreviousVisitor) {
               this.join_requests.push(data.name);
               this.storage.put('join_requests', JSON.stringify(this.join_requests));
-            }
-            else {
+            } else {
               // const encrypted_key = this.lockedKeys[data.name];
               const encrypted_key = this.lockedKeys[this.getLockedKey(_name)];
               keys['locked_key'] = encrypted_key;
@@ -533,7 +567,11 @@ export class ChatRoomAPI {
     try {
       const { searchParams } = new URL(request.url);
       const currentMessagesLength = searchParams.get('currentMessagesLength');
-      let storage = await this.storage.list({ reverse: true, limit: 100 + currentMessagesLength, prefix: this.room_id });
+      let storage = await this.storage.list({
+        reverse: true,
+        limit: 100 + currentMessagesLength,
+        prefix: this.room_id
+      });
       let keys = [...storage.keys()];
       keys = keys.slice(currentMessagesLength);
       keys.reverse();
@@ -585,7 +623,10 @@ export class ChatRoomAPI {
       return returnResult(request, JSON.stringify({ success: true }), 200);
     } catch (error) {
       console.log("Error posting pubKey", error);
-      return returnResult(request, JSON.stringify({ success: false, error: '[postPubKey()] ' + error.message + '\n' + error.stack }), 200)
+      return returnResult(request, JSON.stringify({
+        success: false,
+        error: '[postPubKey()] ' + error.message + '\n' + error.stack
+      }), 200)
     }
   }
 
@@ -632,8 +673,7 @@ export class ChatRoomAPI {
         return returnResult(request, JSON.stringify({}), 200);
       }
       return returnResult(request, JSON.stringify({ error: "Could not accept visitor" }), 500)
-    }
-    catch (e) {
+    } catch (e) {
       console.log("Could not accept visitor: ", e);
       return returnResult(request, JSON.stringify({ error: "Could not accept visitor" }), 500);
     }
@@ -717,10 +757,12 @@ export class ChatRoomAPI {
       this.storage.put('lockedKeys', JSON.stringify(this.lockedKeys))
       this.storage.put('accepted_requests', JSON.stringify(this.accepted_requests));
       return returnResult(request, JSON.stringify({ success: true }), 200);
-    }
-    catch (error) {
+    } catch (error) {
       console.log("Check for owner key rotation failed: ", error);
-      return returnResult(request, JSON.stringify({ success: false, error: '[ownerKeyRotation()] ' + error.message + '\n' + error.stack }), 200)
+      return returnResult(request, JSON.stringify({
+        success: false,
+        error: '[ownerKeyRotation()] ' + error.message + '\n' + error.stack
+      }), 200)
     }
   }
 
@@ -757,6 +799,7 @@ export class ChatRoomAPI {
       const token_hash = this.arrayBufferToBase64(token_hash_buffer);
       const kv_data = { used: false, size: size };
       const kv_resp = await this.env.LEDGER_NAMESPACE.put(token_hash, JSON.stringify(kv_data));
+      console.log(this.ledgerKey)
       const encrypted_token_id = this.arrayBufferToBase64(await crypto.subtle.encrypt({ name: "RSA-OAEP" }, this.ledgerKey, token_buffer));
       const hashed_room_id = this.arrayBufferToBase64(await crypto.subtle.digest('SHA-256', (new TextEncoder).encode(this.room_id)));
       const token = { token_hash: token_hash, hashed_room_id: hashed_room_id, encrypted_token_id: encrypted_token_id };
@@ -768,7 +811,10 @@ export class ChatRoomAPI {
 
   async handleAdminDataRequest(request) {
     try {
-      return returnResult(request, JSON.stringify({ join_requests: this.join_requests, capacity: this.room_capacity }), 200);
+      return returnResult(request, JSON.stringify({
+        join_requests: this.join_requests,
+        capacity: this.room_capacity
+      }), 200);
     } catch (error) {
       return returnResult(request, JSON.stringify({ error: 'Could not get admin data' }), 500);
     }
@@ -787,7 +833,10 @@ export class ChatRoomAPI {
       if (!cookies.hasOwnProperty('token_' + this.room_id)) {
         return false;
       }
-      const verificationKey = await crypto.subtle.importKey("jwk", jsonParseWrapper(await this.env.KEYS_NAMESPACE.get(this.room_id + '_authorizationKey'), 'L778'), { name: "ECDSA", namedCurve: "P-384" }, false, ['verify']);
+      const verificationKey = await crypto.subtle.importKey("jwk", jsonParseWrapper(await this.env.KEYS_NAMESPACE.get(this.room_id + '_authorizationKey'), 'L778'), {
+        name: "ECDSA",
+        namedCurve: "P-384"
+      }, false, ['verify']);
       const auth_parts = cookies['token_' + this.room_id].split('.');
       const payload = auth_parts[0];
       const sign = auth_parts[1];
@@ -807,8 +856,14 @@ export class ChatRoomAPI {
         return false;
       }
       let sign = auth_parts[1];
-      let ownerKey = await window.crypto.subtle.importKey("jwk", this.room_owner, { name: "ECDH", namedCurve: "P-384" }, false, ["deriveKey"]);
-      let roomSignKey = await window.crypto.subtle.importKey("jwk", this.signKey, { name: "ECDH", namedCurve: "P-384" }, false, ["deriveKey"]);
+      let ownerKey = await window.crypto.subtle.importKey("jwk", this.room_owner, {
+        name: "ECDH",
+        namedCurve: "P-384"
+      }, false, ["deriveKey"]);
+      let roomSignKey = await window.crypto.subtle.importKey("jwk", this.signKey, {
+        name: "ECDH",
+        namedCurve: "P-384"
+      }, false, ["deriveKey"]);
       let verificationKey = await window.crypto.subtle.deriveKey(
         {
           name: "ECDH",
@@ -881,7 +936,10 @@ export class ChatRoomAPI {
     this.claimIat = payload.iat;
     this.storage.put("claimIat", this.claimIat)
     const payloadAsJSON = JSON.stringify(payload)
-    const partialToken = `${this.jwtStringify(this._utf8ToUint8Array(JSON.stringify({ alg: options.algorithm, kid: options.keyid })))}.${this.jwtStringify(this._utf8ToUint8Array(payloadAsJSON))}`
+    const partialToken = `${this.jwtStringify(this._utf8ToUint8Array(JSON.stringify({
+      alg: options.algorithm,
+      kid: options.keyid
+    })))}.${this.jwtStringify(this._utf8ToUint8Array(payloadAsJSON))}`
     let keyFormat = 'raw'
     let keyData
     if (secret.startsWith('-----BEGIN')) {
@@ -967,11 +1025,17 @@ export class ChatRoomAPI {
         const keyType = key.split('_').slice(-1)[0];
         let val = typeof keys[key] === 'object' ? keys[key] : jsonParseWrapper(keys[key], 'L956');
         if (keyType === 'encryptionKey') {
-          const cryptoKey = await crypto.subtle.importKey("jwk", val, { name: "AES-GCM", length: 256 }, true, ['encrypt', 'decrypt']);
+          const cryptoKey = await crypto.subtle.importKey("jwk", val, {
+            name: "AES-GCM",
+            length: 256
+          }, true, ['encrypt', 'decrypt']);
           const exported = await crypto.subtle.exportKey("raw", cryptoKey);
           _keys[key] = btoa(this.ab2str(exported));
         } else if (keyType === 'signKey') {
-          const cryptoKey = await crypto.subtle.importKey("jwk", val, { name: "ECDH", namedCurve: "P-384" }, true, ['deriveKey']);
+          const cryptoKey = await crypto.subtle.importKey("jwk", val, {
+            name: "ECDH",
+            namedCurve: "P-384"
+          }, true, ['deriveKey']);
           const _pemKey = await this.exportPrivateCryptoKey(cryptoKey);
           _keys[key] = _pemKey;
         } else {
@@ -1054,7 +1118,7 @@ export class ChatRoomAPI {
   async sendNotifications(dev = true) {
     console.log("Trying to send notifications", this.claimIat)
     let jwtToken = this.notificationToken;
-    if ((this.claimIat - (Math.round(new Date().getTime() / 1000))) > 3000 || jwtToken === "") {
+    if ((this.claimIat - (Math.round(new Date().getTime() / 1000))) > 3000 || jwtToken === "" && this.env.ISS && this.env.APS_KEY) {
       console.log("Refreshing token")
       const claim = { iss: this.env.ISS };
       const pemKey = this.env.APS_KEY;
@@ -1076,35 +1140,46 @@ export class ChatRoomAPI {
         sound: "default",
       }
     };
-    notificationJSON.aps["mutable-content"] = true;
-    notificationJSON.aps["interruption-level"] = "active";
-    let notification = JSON.stringify(notificationJSON)
-    console.log("TOKEN", jwtToken, this.deviceIds[0], notification)
-    let base = dev ? "https://api.sandbox.push.apple.com/3/device/" : "https://api.push.apple.com/3/device/"
-    // console.log("DEVICE LENGTH: ", this.deviceIds.length)
-    for (let i = 0; i < this.deviceIds.length; i++) {
-      console.log("Pinging: ", this.deviceIds[i]);
-      const device_token = this.deviceIds[i];
-      let url = base + device_token;
-      let request = {
-        method: "POST",
-        headers: {
-          "authorization": "bearer " + jwtToken,
-          "apns-topic": "app.snackabra",
-          "apns-push-type": "alert"
-        },
-        body: notification
+    if (this.env.ISS && this.env.APS_KEY) {
+      notificationJSON.aps["mutable-content"] = true;
+      notificationJSON.aps["interruption-level"] = "active";
+      let notification = JSON.stringify(notificationJSON)
+      console.log("TOKEN", jwtToken, this.deviceIds[0], notification)
+      let base = dev ? "https://api.sandbox.push.apple.com/3/device/" : "https://api.push.apple.com/3/device/"
+      // console.log("DEVICE LENGTH: ", this.deviceIds.length)
+      for (let i = 0; i < this.deviceIds.length; i++) {
+        console.log("Pinging: ", this.deviceIds[i]);
+        const device_token = this.deviceIds[i];
+        let url = base + device_token;
+        let request = {
+          method: "POST",
+          headers: {
+            "authorization": "bearer " + jwtToken,
+            "apns-topic": "app.snackabra",
+            "apns-push-type": "alert"
+          },
+          body: notification
+        }
+        let req = await fetch(url, request);
+        console.log("Request is: ", url, JSON.stringify(request))
+        console.log('APPLE RESPONSE', req);
       }
-      let req = await fetch(url, request);
-      console.log("Request is: ", url, JSON.stringify(request))
-      console.log('APPLE RESPONSE', req);
+    } else {
+      console.log('Set ISS and APS_KEY env vars to enable apple notifications')
     }
+
   }
 
 
   async downloadAllData(request) {
     let storage = await this.storage.list();
-    let data = { roomId: this.room_id, ownerKey: this.room_owner, encryptionKey: this.encryptionKey, guestKey: this.verified_guest, signKey: this.signKey };
+    let data = {
+      roomId: this.room_id,
+      ownerKey: this.room_owner,
+      encryptionKey: this.encryptionKey,
+      guestKey: this.verified_guest,
+      signKey: this.signKey
+    };
     storage.forEach((value, key, map) => {
       data[key] = value;
     });
@@ -1138,6 +1213,7 @@ export class ChatRoomAPI {
     let roomInitialized = !(this.room_owner === "" || this.room_owner === null);
     let requestAuthorized = jsonData.hasOwnProperty("SERVER_SECRET") && jsonData["SERVER_SECRET"] === _secret;
     let allowed = (roomInitialized && this.room_owner === jsonData["roomOwner"]) || requestAuthorized
+
     if (allowed) {
       for (let key in jsonData) {
         await this.storage.put(key, jsonData[key]);
@@ -1147,9 +1223,10 @@ export class ChatRoomAPI {
       this.initialize(this.room_id)
       return returnResult(request, JSON.stringify({ success: true }), 200);
     } else {
-      // [psm] ugh ... this was supposed to be on local build ... HUGE security bug ... good lesson
-      // console.log(`wrong secret used - correct is '${_secret}`);
-      return returnResult(request, JSON.stringify({ success: false, error: !roomInitialized ? "Server secret did not match" : "Room owner needs to upload the room" }, 200));
+      return returnResult(request, JSON.stringify({
+        success: false,
+        error: !roomInitialized ? "Server secret did not match" : "Room owner needs to upload the room"
+      }, 200));
     }
   }
 
