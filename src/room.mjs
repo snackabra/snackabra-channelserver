@@ -493,6 +493,9 @@ export class ChatRoomAPI {
 
           return;
         } else if (jsonParseWrapper(msg.data, 'L449').ready) {
+          if(!session.blockedMessages){
+            return;
+          }
           if (this.env.DOCKER_WS) {
             session.blockedMessages.forEach(queued => {
               webSocket.send(queued);
