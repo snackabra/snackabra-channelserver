@@ -172,7 +172,7 @@ async function lastTimeStamp(room_id, env) {
     let message_keys = list_response.keys.map((res) => {
       return res.name
     });
-    if(message_keys.length === 0){
+    if (message_keys.length === 0) {
       return '0'
     }
     while (!list_response.list_complete) {
@@ -493,12 +493,20 @@ export class ChatRoomAPI {
 
           return;
         } else if (jsonParseWrapper(msg.data, 'L449').ready) {
+          if(!session.blockedMessages){
+            return;
+          }
+          if (this.env.DOCKER_WS) {
+            session.blockedMessages.forEach(queued => {
+              webSocket.send(queued);
+            });
+            delete session.blockedMessages;
+            return;
+          }
           webSocket.send(session.blockedMessages)
-          // session.blockedMessages.forEach(queued => {
-          //   webSocket.send(queued);
-          // });
           delete session.blockedMessages;
           return;
+
         }
         this.ownerUnread += 1;
         let ts = Math.max(Date.now(), this.lastTimestamp + 1);
